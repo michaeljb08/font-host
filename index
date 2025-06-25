@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Custom Map with Airtable + Static Pins</title>
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
+  <style>
+    body { margin: 0; padding: 0; }
+    #map { width: 100%; height: 100vh; }
+  </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<script>
+  // 1. SETUP MAPBOX
+  mapboxgl.accessToken = 'pk.eyJ1IjoibWpiYXJubyIsImEiOiJjbWJ0bXVhbXAwNTl5MmtweTN1YjZyMHB3In0.38NnitauvYjLi8kHZ3PYsw';
+  const map = new mapboxgl.Map({
+    container: 'map',
+    style: 'mapbox://styles/mapbox/streets-v12',
+    center: [-112.073907, 33.452768], // Phoenix
+    zoom: 4
+  });
+
+  // 2. ADD STATIC LOGO MARKERS
+  const staticMarkers = [
+    {
+      coords: [112.0712, 33.4457], // Phoenix
+      icon: 'https://github.com/michaeljb08/logo/blob/16e8695f2f2e8a01624b0b70b1f77b329cbb4b05/26_WFF_4C.eps',
+      popup: 'PHX Arena'
+    }
+     ];
+
+  staticMarkers.forEach(marker => {
+    const el = document.createElement('div');
+    el.style.backgroundImage = `url(${marker.icon})`;
+    el.style.width = '40px';
+    el.style.height = '40px';
+    el.style.backgroundSize = 'contain';
+    el.style.backgroundRepeat = 'no-repeat';
+
+    new mapboxgl.Marker(el)
+      .setLngLat(marker.coords)
+      .setPopup(new mapboxgl.Popup().setHTML(marker.popup))
+      .addTo(map);
+  });
+
+  // 3. FETCH DYNAMIC MARKERS FROM AIRTABLE
+fetch('https://api.airtable.com/v0/app8DkWE8YWSsL4uz/Inventory', {
+    headers: {
+      Authorization: 'patoBUU9Vy4A0CRkU.909a672ff54719bb5f6d38db3cac0bd3389a1f6d4ff2d8fa3fa1fc3a835fd545'
+    }
+  })
+  .then(res => res.json())
+  .then(data => {
+    data.records.forEach(record => {
+      const lat = record.fields.Latitude;
+      const lon = record.fields.Longitude;
+      const name = record.fields.Name || 'Name';
+
+      new mapboxgl.Marker({ color: '#007cbf' })
+        .setLngLat([lon, lat])
+        .setPopup(new mapboxgl.Popup().setText(name))
+        .addTo(map);
+    });
+  })
+  .catch(err => console.error('Airtable fetch failed:', err));
+
+  // 4. HANDLE ZOOM TO LOCATION FROM URL PARAM
+  const params = new URLSearchParams(window.location.search);
+  const focus = params.get('location');
+
+  const focusMap = {
+    'branch-a': [-74.0060, 40.7128],
+    'branch-b': [-122.4194, 37.7749],
+    'warehouse': [-73.935242, 40.730610]
+  };
+
+  if (focus && focusMap[focus]) {
+    map.flyTo({ center: focusMap[focus], zoom: 14 });
+  }
+</script>
+
+</body>
+</html>
